@@ -2,27 +2,21 @@ using UnityEngine;
 
 namespace Platformer.Mechanics
 {
-    /// <summary>
-    /// This component is used to create a patrol path, two points which enemies will move between.
-    /// </summary>
-    public partial class PatrolPath : MonoBehaviour
+    public class PatrolPath : MonoBehaviour
     {
-        /// <summary>
-        /// One end of the patrol path.
-        /// </summary>
-        public Vector2 startPosition, endPosition;
+        // Puntos que definen la ruta de patrullaje en el Distrito Industrial
+        public Transform[] waypoints;
 
-        /// <summary>
-        /// Create a Mover instance which is used to move an entity along the path at a certain speed.
-        /// </summary>
-        /// <param name="speed"></param>
-        /// <returns></returns>
-        public Mover CreateMover(float speed = 1) => new Mover(this, speed);
-
-        void Reset()
+        private void OnDrawGizmos()
         {
-            startPosition = Vector3.left;
-            endPosition = Vector3.right;
+            // Visualización en el editor de Unity para facilitar el diseño del nivel
+            if (waypoints == null || waypoints.Length < 2) return;
+
+            Gizmos.color = Color.cyan;
+            for (int i = 0; i < waypoints.Length - 1; i++)
+            {
+                Gizmos.DrawLine(waypoints[i].position, waypoints[i + 1].position);
+            }
         }
     }
 }

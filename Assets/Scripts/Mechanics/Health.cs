@@ -1,60 +1,65 @@
 using System;
-using Platformer.Gameplay;
 using UnityEngine;
-using static Platformer.Core.Simulation;
+using NeonDelivery.Core;
 
 namespace Platformer.Mechanics
 {
-    /// <summary>
-    /// Represebts the current vital statistics of some game entity.
-    /// </summary>
     public class Health : MonoBehaviour
     {
-        /// <summary>
-        /// The maximum hit points for the entity.
-        /// </summary>
         public int maxHP = 1;
-
-        /// <summary>
-        /// Indicates if the entity should be considered 'alive'.
-        /// </summary>
-        public bool IsAlive => currentHP > 0;
-
         int currentHP;
 
-        /// <summary>
-        /// Increment the HP of the entity.
-        /// </summary>
-        public void Increment()
-        {
-            currentHP = Mathf.Clamp(currentHP + 1, 0, maxHP);
-        }
+        [Header("Visual Configuration (Jacket LED)")]
+        [SerializeField] private SpriteRenderer jacketRenderer;
+        [SerializeField] private Color aliveColor = Color.cyan;
+        [SerializeField] private Color deadColor = Color.red;
 
-        /// <summary>
-        /// Decrement the HP of the entity. Will trigger a HealthIsZero event when
-        /// current HP reaches 0.
-        /// </summary>
-        public void Decrement()
-        {
-            currentHP = Mathf.Clamp(currentHP - 1, 0, maxHP);
-            if (currentHP == 0)
-            {
-                var ev = Schedule<HealthIsZero>();
-                ev.health = this;
-            }
-        }
-
-        /// <summary>
-        /// Decrement the HP of the entitiy until HP reaches 0.
-        /// </summary>
-        public void Die()
-        {
-            while (currentHP > 0) Decrement();
-        }
+        public bool IsAlive => currentHP > 0;
 
         void Awake()
         {
             currentHP = maxHP;
+            if (jacketRenderer == null) jacketRenderer = GetComponent<SpriteRenderer>();
+            
+            UpdateJacketColor();
+        }
+
+        public void Decrement()
+        {
+            currentHP = Mathf.Clamp(currentHP - 1, 0, maxHP);
+            UpdateJacketColor();
+
+            if (currentHP == 0)
+            {
+                Die();
+            }
+        }
+
+        public void Die()
+        {
+            currentHP = 0;
+            UpdateJacketColor();
+            
+            Debug.Log("Jax ha quedado fuera de combate.");
+            
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.UpdateGameState(GameState.GameOver);
+            }
+        }
+
+        private void UpdateJacketColor()
+        {
+            if (jacketRenderer != null)
+            {
+                jacketRenderer.color = IsAlive ? aliveColor : deadColor;
+            }
+        }
+
+        public void Increment()
+        {
+            currentHP = Mathf.Clamp(currentHP + 1, 0, maxHP);
+            UpdateJacketColor();
         }
     }
 }

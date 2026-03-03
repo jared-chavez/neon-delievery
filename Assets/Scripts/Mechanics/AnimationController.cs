@@ -1,76 +1,36 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Platformer.Core;
-using Platformer.Model;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Platformer.Mechanics
 {
-    /// <summary>
-    /// AnimationController integrates physics and animation. It is generally used for simple enemy animation.
-    /// </summary>
     [RequireComponent(typeof(SpriteRenderer), typeof(Animator))]
-    public class AnimationController : KinematicObject
+    public class AnimationController : MonoBehaviour
     {
-        /// <summary>
-        /// Max horizontal speed.
-        /// </summary>
-        public float maxSpeed = 7;
-        /// <summary>
-        /// Max jump velocity
-        /// </summary>
-        public float jumpTakeOffSpeed = 7;
+        [Header("Configuración de Animación")]
+        public float maxSpeed = 7f; // Debe coincidir con la de PlayerController
+        
+        // Estas variables las llena el PlayerController cada frame
+        [HideInInspector] public Vector2 move;
+        [HideInInspector] public bool grounded;
 
-        /// <summary>
-        /// Used to indicated desired direction of travel.
-        /// </summary>
-        public Vector2 move;
+        private SpriteRenderer spriteRenderer;
+        private Animator animator;
 
-        /// <summary>
-        /// Set to true to initiate a jump.
-        /// </summary>
-        public bool jump;
-
-        /// <summary>
-        /// Set to true to set the current jump velocity to zero.
-        /// </summary>
-        public bool stopJump;
-
-        SpriteRenderer spriteRenderer;
-        Animator animator;
-        PlatformerModel model = Simulation.GetModel<PlatformerModel>();
-
-        protected virtual void Awake()
+        void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
             animator = GetComponent<Animator>();
         }
 
-        protected override void ComputeVelocity()
+        void Update()
         {
-            if (jump && IsGrounded)
-            {
-                velocity.y = jumpTakeOffSpeed * model.jumpModifier;
-                jump = false;
-            }
-            else if (stopJump)
-            {
-                stopJump = false;
-                if (velocity.y > 0)
-                {
-                    velocity.y = velocity.y * model.jumpDeceleration;
-                }
-            }
+            // 1. Sincronizamos el parámetro del Animator con la velocidad real de Jax
+            // Dividimos entre maxSpeed para que el valor esté entre 0 y 1 (estándar de Blend Trees)
+            animator.SetFloat("velocityX", Mathf.Abs(move.x) / maxSpeed);
+            
+            // 2. Sincronizamos el estado de "suelo" para las animaciones de salto
+            animator.SetBool("grounded", grounded);
 
-            if (move.x > 0.01f)
-                spriteRenderer.flipX = false;
-            else if (move.x < -0.01f)
-                spriteRenderer.flipX = true;
-
-            animator.SetBool("grounded", IsGrounded);
-            animator.SetFloat("velocityX", Mathf.Abs(velocity.x) / maxSpeed);
-
-            targetVelocity = move * maxSpeed;
+            // Nota: El 'Flip' del sprite ya lo maneja el PlayerController directamente
         }
     }
 }

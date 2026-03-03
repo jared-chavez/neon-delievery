@@ -1,71 +1,53 @@
 using UnityEngine;
+using Platformer.Gameplay;
 
 namespace Platformer.Mechanics
 {
-    /// <summary>
-    /// This class animates all token instances in a scene.
-    /// This allows a single update call to animate hundreds of sprite 
-    /// animations.
-    /// If the tokens property is empty, it will automatically find and load 
-    /// all token instances in the scene at runtime.
-    /// </summary>
     public class TokenController : MonoBehaviour
     {
-        [Tooltip("Frames per second at which tokens are animated.")]
-        public float frameRate = 12;
-        [Tooltip("Instances of tokens which are animated. If empty, token instances are found and loaded at runtime.")]
-        public TokenInstance[] tokens;
+        // Patrón Singleton para acceso global desde TokenInstance
+        public static TokenController Instance { get; private set; }
 
-        float nextFrameTime = 0;
+        [Header("Estadísticas de la Misión")]
+        public int collectedDataPackages = 0;
 
-        [ContextMenu("Find All Tokens")]
-        void FindAllTokensInScene()
+        private void Awake()
         {
-            tokens = UnityEngine.Object.FindObjectsByType<TokenInstance>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            if (Instance != null && Instance != this)
+            {
+                Destroy(this);
+                return;
+            }
+            Instance = this;
         }
 
-        void Awake()
+        // Este es el método que recibe la "señal" del TokenInstance
+        public void OnTokenCollected(TokenInstance token, PlayerController player)
         {
-            //if tokens are empty, find all instances.
-            //if tokens are not empty, they've been added at editor time.
-            if (tokens.Length == 0)
-                FindAllTokensInScene();
-            //Register all tokens so they can work with this controller.
-            for (var i = 0; i < tokens.Length; i++)
+            switch (token.type)
             {
-                tokens[i].tokenIndex = i;
-                tokens[i].controller = this;
+                case TokenInstance.TokenType.IonBattery:
+                    HandleIonBattery(player);
+                    break;
+
+                case TokenInstance.TokenType.DataPackage:
+                    HandleDataPackage(token);
+                    break;
             }
         }
 
-        void Update()
+        private void HandleIonBattery(PlayerController player)
         {
-            //if it's time for the next frame...
-            if (Time.time - nextFrameTime > (1f / frameRate))
-            {
-                //update all tokens with the next animation frame.
-                for (var i = 0; i < tokens.Length; i++)
-                {
-                    var token = tokens[i];
-                    //if token is null, it has been disabled and is no longer animated.
-                    if (token != null)
-                    {
-                        token._renderer.sprite = token.sprites[token.frame];
-                        if (token.collected && token.frame == token.sprites.Length - 1)
-                        {
-                            token.gameObject.SetActive(false);
-                            tokens[i] = null;
-                        }
-                        else
-                        {
-                            token.frame = (token.frame + 1) % token.sprites.Length;
-                        }
-                    }
-                }
-                //calculate the time of the next frame.
-                nextFrameTime += 1f / frameRate;
-            }
+            // Lógica de Impulso: Reseteamos el Dash de Jax al instante
+            Debug.Log("ENERGÍA RESTAURADA: Dash disponible.");
+            player.ResetDash(); 
         }
 
+        private void HandleDataPackage(TokenInstance token)
+        {
+            // Lógica de Progresión: Sumamos al contador del nivel
+            collectedDataPackages++;
+            Debug.Log($"PAQUETE ASEGURADO: {collectedDataPackages} recuperados.");
+        }
     }
 }
