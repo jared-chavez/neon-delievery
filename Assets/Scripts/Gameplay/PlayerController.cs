@@ -12,7 +12,7 @@ namespace Platformer.Gameplay
         public float dashSpeed = 20f;
 
         [Header("Referencias Vitales")]
-        public Health health; // CORRECCIÓN: Variable faltante para el error CS1061
+        public Health health; 
         public PlatformerModel model;
         private Animator animatorComponent;
         private SpriteRenderer spriteRenderer;
