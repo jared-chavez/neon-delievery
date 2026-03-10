@@ -1,35 +1,47 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
-namespace NeonDelivery.View
+public class ParallaxEffect : MonoBehaviour
 {
-    public class ParallaxEffect : MonoBehaviour
+    private float length, startpos;
+    public GameObject cam;
+    public float parallaxFactor;
+    private bool hasSprite;
+
+    void Start()
     {
-        private float length, startPos;
-        public GameObject cam;
+        startpos = transform.position.x;
         
-        [Header("Configuración de Profundidad")]
-        [Tooltip("0 = Sigue a la cámara, 1 = Estático. Usa valores entre 0.1 y 0.9.")]
-        public float parallaxFactor;
-
-        void Start()
+        // Verificamos si el objeto tiene un SpriteRenderer
+        SpriteRenderer sprite = GetComponent<SpriteRenderer>();
+        
+        if (sprite != null)
         {
-            // Guardamos la posición inicial y el tamaño del sprite para el bucle infinito
-            startPos = transform.position.x;
-            length = GetComponent<SpriteRenderer>().bounds.size.x;
+            length = sprite.bounds.size.x;
+            hasSprite = true;
         }
-
-        void LateUpdate()
+        else
         {
-            // Calculamos cuánto se ha movido el fondo respecto a la cámara
-            float temp = (cam.transform.position.x * (1 - parallaxFactor));
-            float dist = (cam.transform.position.x * parallaxFactor);
+            hasSprite = false;
+        }
+    }
 
-            // Aplicamos el movimiento
-            transform.position = new Vector3(startPos + dist, transform.position.y, transform.position.z);
+    void Update()
+    {
+        // Si no hay cámara asignada, salimos para evitar errores en consola
+        if (cam == null) return;
 
-            // Lógica de "Mar de concreto sin fin": Si el fondo se sale de cámara, se reposiciona
-            if (temp > startPos + length) startPos += length;
-            else if (temp < startPos - length) startPos -= length;
+        float temp = (cam.transform.position.x * (1 - parallaxFactor));
+        float dist = (cam.transform.position.x * parallaxFactor);
+
+        transform.position = new Vector3(startpos + dist, transform.position.y, transform.position.z);
+
+        // Solo aplicamos la repetición infinita si el objeto tiene un sprite (como el cielo)
+        if (hasSprite)
+        {
+            if (temp > startpos + length) startpos += length;
+            else if (temp < startpos - length) startpos -= length;
         }
     }
 }

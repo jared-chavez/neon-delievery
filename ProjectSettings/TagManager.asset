@@ -12,7 +12,7 @@ TagManager:
   - Ground
   - Water
   - UI
-  - 
+  - Climbable
   - 
   - 
   - 
@@ -46,10 +46,25 @@ TagManager:
     uniqueID: 868943441
     locked: 0
   - name: Mid_BG
+    uniqueID: 3507484933
+    locked: 0
+  - name: Corridor_Wall
+    uniqueID: 3081654613
+    locked: 0
+  - name: Markers
+    uniqueID: 3449163371
+    locked: 0
+  - name: Midground
+    uniqueID: 2805741319
+    locked: 0
+  - name: Ground
     uniqueID: 613666157
     locked: 0
-  - name: Near_BG
+  - name: Player
     uniqueID: 3172450237
+    locked: 0
+  - name: Foreground
+    uniqueID: 2295052537
     locked: 0
   m_RenderingLayers:
   - Default
