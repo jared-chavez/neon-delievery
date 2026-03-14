@@ -1,112 +1,123 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using Platformer.Gameplay;
-using Platformer.Mechanics;
-using Platformer.Model;
-
-namespace Platformer.Gameplay
+namespace Platformer.Gameplay {}
+namespace Platformer.Mechanics
 {
-    public class PlayerController : KinematicObject
+    [RequireComponent(typeof(Rigidbody2D), typeof(Animator), typeof(SpriteRenderer))]
+    public class PlayerController : MonoBehaviour
     {
-        [Header("Configuración de Jax (Byteados)")]
-        public float maxSpeed = 7;
-        public float jumpTakeOffSpeed = 7;
-        public float dashSpeed = 20; 
+        [Header("Física Biónica de Jax")]
+        public float moveSpeed = 8f;        
+        public float jumpForce = 14f;       
+        public float backjumpForceX = 6f;   
+        public float backjumpForceY = 12f;  
 
-        [Header("Arsenal de Sonido (SFX)")]
-        public AudioSource shootSound;
-        public AudioSource movementSound;
+        [Header("Detección de Suelo")]
+        public Transform groundCheck;       
+        public float groundCheckRadius = 0.2f;
+        public LayerMask groundLayer;       
 
-        [Header("Model & Detección")]
-        public Animator animator;
-        public SpriteRenderer spriteRenderer;
+        [Header("Armamento FX")]
         public GameObject bulletPrefab; 
-        public Transform firePoint;
+        public Transform firePoint;     
+        
+        private Rigidbody2D rb;
+        private Animator animator;
+        private SpriteRenderer spriteRenderer;
 
-        private bool isClimbing; 
-        private float vMove;
+        private float horizontalInput;
+        private bool isGrounded;
+        private bool isCrouching;
+        private bool isShooting;
 
-        // Corrección CS0115: Quitamos override porque KinematicObject no tiene Awake virtual
-        void Awake() 
+        void Start()
         {
-            // Inicialización de componentes si no se arrastran en el inspector
+            rb = GetComponent<Rigidbody2D>();
+            animator = GetComponent<Animator>();
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            rb.gravityScale = 3.5f; 
         }
 
-        protected override void ComputeVelocity()
+        void Update()
         {
-            float move = Input.GetAxis("Horizontal");
-            vMove = Input.GetAxisRaw("Vertical");
+            horizontalInput = Input.GetAxisRaw("Horizontal");
 
-            // 1. Detección de Escalera (Capa Climbable)
-            bool nearLadder = Physics2D.OverlapCircle(transform.position, 0.2f, LayerMask.GetMask("Climbable"));
+            // Agacharse
+            isCrouching = Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
+            animator.SetBool("isCrouching", isCrouching);
 
-            if (nearLadder && Mathf.Abs(vMove) > 0.1f)
+            // Disparo (Solo instanciamos en el frame que se presiona)
+            if (Input.GetKeyDown(KeyCode.Z) || Input.GetButtonDown("Fire1"))
             {
-                isClimbing = true;
+                animator.SetBool("isShooting", true);
+                DispararFX();
             }
-            else if (!nearLadder)
+            else if (Input.GetKeyUp(KeyCode.Z) || Input.GetButtonUp("Fire1"))
             {
-                isClimbing = false;
+                animator.SetBool("isShooting", false);
             }
 
-            // 2. Lógica de Escalado con Pausa de Animación
-            if (isClimbing)
+            // Salto
+            if (Input.GetButtonDown("Jump") && isGrounded && !isCrouching)
             {
-                velocity = new Vector2(0, vMove * maxSpeed); 
-                
-                // TRUCO: Si no hay movimiento, forzamos la velocidad a CERO absoluto
-                if (vMove == 0) {
-                    velocity.y = 0;
-                    // Si tu KinematicObject tiene gravityModifier, lo ignoramos aquí
-                }
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            }
 
-                animator.speed = (vMove == 0) ? 0 : 1; 
-                animator.SetBool("isClimbing", true);
-                animator.SetBool("grounded", true); 
+            // Evasión (Backjump)
+            if (Input.GetKeyDown(KeyCode.C) && isGrounded)
+            {
+                animator.SetTrigger("backjump");
+                ExecuteBackjump();
+            }
+
+            // Dirección Visual
+            if (horizontalInput > 0) spriteRenderer.flipX = false;
+            else if (horizontalInput < 0) spriteRenderer.flipX = true;
+
+            // Sincronización del Animator (Parche para el deslizamiento)
+            float velocidadVisual = isCrouching ? 0f : Mathf.Abs(horizontalInput);
+            animator.SetFloat("velocityX", velocidadVisual);
+            animator.SetBool("grounded", isGrounded);
+        }
+
+        void FixedUpdate()
+        {
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+            if (!isCrouching)
+            {
+                rb.linearVelocity = new Vector2(horizontalInput * moveSpeed, rb.linearVelocity.y);
             }
             else
             {
-                // Restauramos velocidad de animación normal
-                animator.speed = 1; 
-                animator.SetBool("isClimbing", false);
-                animator.SetBool("grounded", IsGrounded); // Nota: 'I' mayúscula según tu KinematicObject
-
-                // Control Horizontal
-                if (move > 0.01f) spriteRenderer.flipX = false;
-                else if (move < -0.01f) spriteRenderer.flipX = true;
-
-                // Salto y Dash
-                if (Input.GetButtonDown("Jump") && IsGrounded)
-                {
-                    velocity.y = jumpTakeOffSpeed;
-                    if (movementSound != null) movementSound.Play();
-                }
-
-                if (Input.GetKeyDown(KeyCode.LeftShift))
-                {
-                    animator.SetTrigger("dash");
-                    velocity.x *= dashSpeed;
-                }
+                rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
             }
-
-            // 3. Sistema de Disparo
-            if (Input.GetButtonDown("Fire1"))
-            {
-                Shoot();
-                if (shootSound != null) shootSound.Play();
-            }
-
-            animator.SetFloat("velocityX", Mathf.Abs(velocity.x) / maxSpeed);
-            targetVelocity = new Vector2(move * maxSpeed, targetVelocity.y);
         }
 
-        void Shoot()
+        private void ExecuteBackjump()
         {
-            if (bulletPrefab != null && firePoint != null)
-                Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+            float direction = spriteRenderer.flipX ? 1f : -1f;
+            rb.linearVelocity = new Vector2(direction * backjumpForceX, backjumpForceY);
         }
 
-        public void ResetDash() { } // Compatibilidad con Tokens
+        private void DispararFX()
+        {
+            if(bulletPrefab != null && firePoint != null)
+            {
+                // Creamos la bala en la posición y rotación del FirePoint
+                Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+            }
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (groundCheck != null)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+            }
+        }
+
+        // Puente para evitar errores del TokenController viejo
+        public void ResetDash() { }
     }
 }
